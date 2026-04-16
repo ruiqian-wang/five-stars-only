@@ -10,11 +10,38 @@ function ensureParentDir(filePath) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function isVercelRuntime() {
+  return process.env.VERCEL === "1" || process.env.VERCEL === "true";
+}
+
+function resolveRuntimeDbPath() {
+  const configuredPath = settings.dbPath;
+  const absConfiguredPath = path.isAbsolute(configuredPath)
+    ? configuredPath
+    : path.resolve(process.cwd(), configuredPath);
+
+  if (!isVercelRuntime()) {
+    return absConfiguredPath;
+  }
+
+  // Vercel serverless filesystem is read-only except /tmp.
+  const tmpRoot = path.join("/tmp", "five-stars-only");
+  const tmpDbPath = path.join(tmpRoot, path.basename(absConfiguredPath));
+  ensureParentDir(tmpDbPath);
+
+  if (!fs.existsSync(tmpDbPath) && fs.existsSync(absConfiguredPath)) {
+    fs.copyFileSync(absConfiguredPath, tmpDbPath);
+  }
+
+  return tmpDbPath;
+}
+
 export function getDb() {
   if (db) return db;
 
-  ensureParentDir(settings.dbPath);
-  db = new Database(settings.dbPath);
+  const runtimeDbPath = resolveRuntimeDbPath();
+  ensureParentDir(runtimeDbPath);
+  db = new Database(runtimeDbPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
   initSchema(db);
