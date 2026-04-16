@@ -35,11 +35,16 @@ export function buildFacetFloorPlanElementPrompt(
   amenityId: string,
   facet: string,
   objectInstruction: string,
-  roomItem: RoomItem
+  roomItem: RoomItem,
+  styleSpecification?: string
 ): string {
   const scaleHint = `Approximate footprint hint from layout (relative units): width=${roomItem.width}, height=${roomItem.height}.`;
+  const styleExtra = styleSpecification?.trim()
+    ? ["", "REFERENCE-DERIVED STYLE NOTES (match the floor-plan style sheet):", styleSpecification.trim()].join("\n")
+    : "";
   return [
     FACET_UI_STYLE_BLOCK,
+    styleExtra ?? "",
     "",
     "SUBJECT (HOTEL REVIEW FACET):",
     `Facet key: ${facetKey}`,

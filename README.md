@@ -1,40 +1,82 @@
+# Five Stars Dashboard
+
+Interactive hotel-stay experience with:
+- a React/Vite frontend (`My Trips`, `Rate your stay`, room-sticker flow),
+- an Express backend for room image generation, and
+- a hotel-review API module for dynamic follow-up questions.
 
 ## Run Locally
 
-**Prerequisites:**  Node.js
-
+**Prerequisites:** Node.js 20+ and npm.
 
 1. Install dependencies:
    `npm install`
-2. Run the frontend:
+2. Run frontend:
    `npm run dev`
-3. Run the backend API (separate terminal):
+3. Run backend (separate terminal):
    `npm run dev:backend`
 
-## Backend Image Generation API
+Frontend runs on `http://localhost:3000`.
+Backend defaults to `http://localhost:8787`.
 
-Backend is implemented with Node.js + Express and calls OpenAI from server-side only.
+## Scripts
 
-- `POST /api/generate-room-image`
-- `POST /api/generate-room-element`
+- `npm run dev` - start Vite frontend
+- `npm run dev:backend` - start Express backend (`backend/server.ts`)
+- `npm run bootstrap:hotel-review` - import hotel CSV data into SQLite snapshots
+- `npm run lint` - TypeScript check (`tsc --noEmit`)
+- `npm run build` - production build
 
-### Environment
+## Environment
 
-Create `.env` from `.env.example` and set:
+Create `.env` from `.env.example` and configure as needed.
 
-- `OPENAI_API_KEY=...`
-- optional: `PORT=8787`
-- optional: `STYLE_REFERENCE_IMAGE_PATH=pic/style1.png` — default style image when the JSON body does not include `styleReference`
+Core keys:
+- `OPENAI_API_KEY` (required for OpenAI calls)
+- `PORT` (optional, default `8787`)
+- `STYLE_REFERENCE_IMAGE_PATH` (optional fallback style image)
 
-### Style matching
+Hotel-review module keys:
+- `DB_PATH`
+- `DESCRIPTION_CSV`
+- `REVIEWS_CSV`
+- `RECENT_WINDOW_DAYS`
+- `PENDING_REVIEW_LAG_DAYS`
+- `ASK_THRESHOLD`
+- `OPENAI_MODEL` (default `gpt-5`)
+- `ENABLE_AI_RERANK`
 
-When `styleReference` is present (or loaded from `STYLE_REFERENCE_IMAGE_PATH`), the server uses OpenAI **`images.edit`** with **`input_fidelity: high`** so output follows the reference image’s line work, color, and texture more closely. A vision step still writes a detailed style checklist into the text prompt. Pure text generation (`images.generate`) is used only when no reference image is available.
+Frontend optional key:
+- `VITE_HOTEL_REVIEW_PROPERTY_ID`
+  - If set, `Rate your stay` uses this property directly.
+  - If unset, frontend uses the first row from `GET /api/hotel-review/v1/properties`.
 
-### Request payloads
+## Backend APIs
 
-`POST /api/generate-room-image`
+`backend/server.ts` mounts three groups:
 
-`roomStructure` is the only geometry input used for this endpoint. `roomItems` can be sent in the same payload for client convenience, but furniture is intentionally excluded from room-image rendering and should be generated through `/api/generate-room-element`.
+- Health:
+  - `GET /api/health`
+  - `GET /api/hotel-review/health`
+
+- Image generation (`/api`):
+  - `POST /api/generate-room-image`
+  - `POST /api/generate-room-element`
+
+- Hotel review (`/api/hotel-review/v1`):
+  - `GET /properties`
+  - `GET /properties/:propertyId/snapshot`
+  - `POST /properties/:propertyId/candidates`
+  - `POST /properties/:propertyId/followup`
+  - `POST /followup-answers`
+  - `POST /admin/rebuild-snapshots`
+
+## Image Generation Payloads
+
+### `POST /api/generate-room-image`
+
+Uses only `roomStructure` geometry to render the room shell.
+`roomItems` may be present for client convenience but are not drawn in this endpoint.
 
 ```json
 {
@@ -48,17 +90,14 @@ When `styleReference` is present (or loaded from `STYLE_REFERENCE_IMAGE_PATH`), 
       { "id": "fw-door-main", "elementType": "door", "x": 760, "y": 840, "width": 120, "height": 40 }
     ]
   },
-  "roomItems": [
-    { "id": "bed-1", "type": "bed", "label": "King Bed", "x": 100, "y": 580, "width": 220, "height": 160 }
-  ],
   "styleReference": {
-    "imageBase64": "iVBORw0KGgoAAAANSUhEUgAA...",
+    "imageBase64": "...",
     "mimeType": "image/png"
   }
 }
 ```
 
-`POST /api/generate-room-element`
+### `POST /api/generate-room-element`
 
 ```json
 {
@@ -71,14 +110,15 @@ When `styleReference` is present (or loaded from `STYLE_REFERENCE_IMAGE_PATH`), 
     "width": 230,
     "height": 120
   },
+  "facetKey": "ROOM_CLEANLINESS:surfaces_clean",
   "styleReference": {
-    "imageBase64": "iVBORw0KGgoAAAANSUhEUgAA...",
+    "imageBase64": "...",
     "mimeType": "image/png"
   }
 }
 ```
 
-Both endpoints respond with:
+Both endpoints return:
 
 ```json
 {
@@ -88,3 +128,15 @@ Both endpoints respond with:
   "mimeType": "image/png"
 }
 ```
+
+## Hotel-Review Notes
+
+The question engine can return these interaction types:
+- `likert_5`
+- `single_choice`
+- `multi_select`
+- `nps_10`
+
+Client submission stores per-question values as `answer_value` plus optional `answer_text` via `POST /api/hotel-review/v1/followup-answers`.
+
+For module-specific details, see `backend/hotel-review/README.md`.

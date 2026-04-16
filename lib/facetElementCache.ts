@@ -1,11 +1,15 @@
+import type { StyleVariant } from "@/lib/roomLayoutVariant";
+
 type CachedFacetElements = {
-  version: 1;
+  version: 2;
+  /** Which style sheet was used (`pic/style1.png` / `pic/style2.png`). */
+  styleVariant: StyleVariant;
   savedAt: number;
   items: Array<{ facetKey: string; roomItemId: string; dataUrl: string }>;
 };
 
-/** Bump when generated asset format changes (e.g. transparent PNG). */
-const STORAGE_KEY = "five-stars-only:facet-element-images-v2";
+/** Bump when generated asset format or style pairing changes. */
+const STORAGE_KEY = "five-stars-only:facet-element-images-v3";
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_PAYLOAD_CHARS = 4_500_000;
 
@@ -16,9 +20,10 @@ export function readFacetElementCache(): CachedFacetElements | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<CachedFacetElements>;
     if (
-      parsed.version !== 1 ||
+      parsed.version !== 2 ||
       !Array.isArray(parsed.items) ||
-      typeof parsed.savedAt !== "number"
+      typeof parsed.savedAt !== "number" ||
+      (parsed.styleVariant !== "style1" && parsed.styleVariant !== "style2")
     ) {
       sessionStorage.removeItem(STORAGE_KEY);
       return null;
@@ -33,11 +38,15 @@ export function readFacetElementCache(): CachedFacetElements | null {
   }
 }
 
-export function writeFacetElementCache(payload: { items: CachedFacetElements["items"] }): void {
+export function writeFacetElementCache(payload: {
+  items: CachedFacetElements["items"];
+  styleVariant: StyleVariant;
+}): void {
   if (typeof window === "undefined") return;
   try {
     const value: CachedFacetElements = {
-      version: 1,
+      version: 2,
+      styleVariant: payload.styleVariant,
       items: payload.items,
       savedAt: Date.now(),
     };

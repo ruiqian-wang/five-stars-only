@@ -223,7 +223,7 @@ export async function generateRoomElementImage(
 ): Promise<GeneratedImageResponse> {
   const facetKey = options?.facetKey?.trim();
   const facetMode = Boolean(facetKey);
-  const cacheKey = getElementCacheKey(roomItem, facetMode ? undefined : styleReference, facetKey);
+  const cacheKey = getElementCacheKey(roomItem, styleReference, facetKey);
   const cached = elementImageCache.get(cacheKey);
   if (cached) return cached;
 
@@ -232,14 +232,16 @@ export async function generateRoomElementImage(
   if (facetMode && facetKey) {
     const { amenityId, facet } = parseFacetKeyParts(facetKey);
     const objectInstruction = resolveFacetObjectInstruction(facetKey);
+    const styleGuide = await buildStyleGuideFromReference(client, styleReference);
     const prompt = buildFacetFloorPlanElementPrompt(
       facetKey,
       amenityId,
       facet,
       objectInstruction,
-      roomItem
+      roomItem,
+      styleGuide
     );
-    const generated = await renderPromptToImage(client, prompt, undefined, { transparentPng: true });
+    const generated = await renderPromptToImage(client, prompt, styleReference, { transparentPng: true });
     elementImageCache.set(cacheKey, generated);
     return generated;
   }

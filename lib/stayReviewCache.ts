@@ -5,6 +5,10 @@ type CachedStayReviewQuestions = {
     label: string;
     elementLabel?: string;
     description: string;
+    questionText?: string;
+    interactionType?: "likert_5" | "single_choice" | "multi_select" | "nps_10";
+    choiceOptions?: { label: string; value: string }[];
+    commentPlaceholder?: string;
     priority: number;
     facetKey?: string;
     amenity_id?: string;
@@ -13,7 +17,8 @@ type CachedStayReviewQuestions = {
   savedAt: number;
 };
 
-const STORAGE_KEY = "five-stars-only:stay-review-questions-v1";
+/** Bump when stay-review card shape or backend fields change. */
+const STORAGE_KEY = "five-stars-only:stay-review-questions-v5";
 const MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 export function readStayReviewQuestionsCache(): CachedStayReviewQuestions | null {

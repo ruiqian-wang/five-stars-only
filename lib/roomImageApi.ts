@@ -2,6 +2,7 @@
  * Calls the Node backend (proxied by Vite at /api). Never uses OPENAI_API_KEY in the browser.
  */
 import type { RoomGenerationInput, RoomItem } from "@/lib/roomGenerationTypes";
+import type { StyleVariant } from "@/lib/roomLayoutVariant";
 
 export type GenerateRoomImageSuccess = {
   success: true;
@@ -46,6 +47,8 @@ export async function fetchGeneratedRoomElementImage(body: {
   roomStructure?: RoomGenerationInput["roomStructure"];
   /** When set, backend uses facet-driven floor-plan UI prompt (see elementPromptBuilder). */
   facetKey?: string;
+  /** Maps to `pic/style1.png` / `pic/style2.png` on the server for element style. */
+  styleVariant?: StyleVariant;
 }): Promise<GenerateRoomImageSuccess> {
   const res = await fetch("/api/generate-room-element", {
     method: "POST",

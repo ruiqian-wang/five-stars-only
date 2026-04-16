@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { MOCK_ROOM_ELEMENT, MOCK_ROOM_STRUCTURE } from "../mock/mockRoomData";
-import { loadStyleReferenceFromEnv } from "../services/loadDefaultStyleReference";
+import { resolveStyleReferenceForRequest } from "../services/loadDefaultStyleReference";
 import {
   generateFullRoomImage,
   generateRoomElementImage,
@@ -105,8 +105,7 @@ router.post("/generate-room-image", async (req, res) => {
       parseRoomStructureFromBody(req.body?.roomStructure) ??
       parseRoomStructureFromBody(req.body?.roomLayout) ?? // legacy payload compatibility
       MOCK_ROOM_STRUCTURE;
-    const styleReference =
-      parseStyleReference(req.body?.styleReference) ?? loadStyleReferenceFromEnv();
+    const styleReference = resolveStyleReferenceForRequest(req.body ?? {});
 
     const result = await generateFullRoomImage(roomStructure, styleReference);
 
@@ -134,9 +133,7 @@ router.post("/generate-room-element", async (req, res) => {
     const facetKey =
       typeof facetKeyRaw === "string" && facetKeyRaw.trim() ? facetKeyRaw.trim() : undefined;
 
-    const styleReference = facetKey
-      ? undefined
-      : parseStyleReference(req.body?.styleReference) ?? loadStyleReferenceFromEnv();
+    const styleReference = resolveStyleReferenceForRequest(req.body ?? {});
 
     const result = await generateRoomElementImage(roomItem, styleReference, { facetKey });
 

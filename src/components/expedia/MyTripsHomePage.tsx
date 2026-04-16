@@ -12,15 +12,13 @@ import {
   MessageSquare,
   X,
   CheckCircle2,
-  BedDouble,
-  Sparkles,
-  Key,
-  Users,
-  MoreHorizontal,
   Coffee,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
+import type { RoomLayoutVariant } from "@/lib/roomLayoutVariant";
+import roomPick1 from "../../../pic/room1.png";
+import roomPick2 from "../../../pic/room2.png";
 
 type TabType = "saved" | "booked" | "past";
 
@@ -145,13 +143,6 @@ const HomeNavbar = ({
         </div>
 
         <div className="flex items-center space-x-4">
-          <button
-            type="button"
-            className="p-2 text-brand-muted hover:text-brand-dark hover:bg-white/50 rounded-full transition-colors"
-            aria-label="Notifications"
-          >
-            <Bell className="h-5 w-5" />
-          </button>
           <button
             type="button"
             onClick={onOpenProfile}
@@ -319,13 +310,13 @@ const EmptyState = ({ activeTab }: { activeTab: TabType }) => {
   );
 };
 
-const EarlyFeedbackWidget = () => {
+const EarlyFeedbackWidget = ({
+  onRoomLayoutSelected,
+}: {
+  onRoomLayoutSelected?: (layout: RoomLayoutVariant) => void;
+}) => {
   const [isVisible, setIsVisible] = useState(true);
   const [step, setStep] = useState(0);
-  const [roomType, setRoomType] = useState<string | null>(null);
-  const [mood, setMood] = useState<string | null>(null);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [note, setNote] = useState("");
 
   if (!isVisible) return null;
 
@@ -336,38 +327,13 @@ const EarlyFeedbackWidget = () => {
     { id: "bad", emoji: "🙁", label: "Not great" },
   ];
 
-  const roomTypes = [
-    { id: "standard", label: "Standard Room", icon: BedDouble },
-    { id: "deluxe", label: "Deluxe Room", icon: Sparkles },
-    { id: "suite", label: "Suite", icon: Key },
-    { id: "family", label: "Family Room", icon: Users },
-    { id: "other", label: "Other", icon: MoreHorizontal },
-  ];
-
-  const tags = [
-    "Smooth check-in",
-    "Clean room",
-    "Friendly staff",
-    "Long wait",
-    "Confusing directions",
-    "Room not ready",
-  ];
-
-  const toggleTag = (tag: string) => {
-    if (selectedTags.includes(tag)) {
-      setSelectedTags(selectedTags.filter((t) => t !== tag));
-    } else if (selectedTags.length < 2) {
-      setSelectedTags([...selectedTags, tag]);
-    }
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, x: -20, y: 20 }}
       animate={{ opacity: 1, x: 0, y: 0 }}
-      className="fixed bottom-6 left-6 z-50 w-80 max-w-[calc(100vw-3rem)] bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 overflow-hidden"
+      className="fixed bottom-6 left-6 z-50 w-[22rem] max-w-[calc(100vw-3rem)] bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-gray-100 overflow-hidden"
     >
-      {step !== 4 && step !== -1 && (
+      {step !== -1 && (
         <button
           type="button"
           onClick={() => setIsVisible(false)}
@@ -388,8 +354,10 @@ const EarlyFeedbackWidget = () => {
               exit={{ opacity: 0, x: 10 }}
               className="flex flex-col"
             >
-              <h4 className="text-lg font-bold text-brand-dark mb-1">Have you arrived?</h4>
-              <p className="text-sm text-brand-muted mb-5">Tell us how your stay is going so far</p>
+              <h4 className="text-lg font-bold text-brand-dark mb-1">Ready to play?</h4>
+              <p className="text-sm text-brand-muted mb-5">
+                Unlock your stay&apos;s little room game—stickers, props, and surprises ahead.
+              </p>
               <div className="flex flex-col gap-2.5">
                 <button
                   type="button"
@@ -423,9 +391,9 @@ const EarlyFeedbackWidget = () => {
                 <Coffee className="h-6 w-6" />
               </div>
               <h4 className="text-lg font-bold text-brand-dark mb-2 leading-tight">
-                Take your time, we&apos;re excited to have you stay with us.
+                No rush—we&apos;ll ping you when it&apos;s game time.
               </h4>
-              <p className="text-sm text-brand-muted">We&apos;ll check in with you later.</p>
+              <p className="text-sm text-brand-muted">Your room stage will be waiting.</p>
             </motion.div>
           )}
 
@@ -437,16 +405,14 @@ const EarlyFeedbackWidget = () => {
               exit={{ opacity: 0, x: 10 }}
               className="flex flex-col"
             >
-              <h4 className="text-lg font-bold text-brand-dark mb-4">How does it feel so far?</h4>
+              <h4 className="text-lg font-bold text-brand-dark mb-1">What&apos;s your vibe?</h4>
+              <p className="text-xs text-brand-muted mb-3">Quick pulse—just for fun, not a review.</p>
               <div className="flex justify-between gap-1">
                 {moods.map((m) => (
                   <button
                     key={m.id}
                     type="button"
-                    onClick={() => {
-                      setMood(m.id);
-                      setStep(3);
-                    }}
+                    onClick={() => setStep(2)}
                     className="flex flex-col items-center gap-2 p-2 rounded-2xl hover:bg-gray-50 transition-colors flex-1"
                   >
                     <span className="text-3xl">{m.emoji}</span>
@@ -459,54 +425,49 @@ const EarlyFeedbackWidget = () => {
 
           {step === 2 && (
             <motion.div
-              key="step2"
+              key="step2-layout"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 10 }}
               className="flex flex-col"
             >
-              <h4 className="text-lg font-bold text-brand-dark mb-1">What stands out so far?</h4>
-              <p className="text-xs text-brand-muted mb-4">Select up to 2</p>
-
-              <div className="flex flex-wrap gap-2 mb-4">
-                {tags.map((tag) => {
-                  const isSelected = selectedTags.includes(tag);
-                  return (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => toggleTag(tag)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-medium transition-colors border",
-                        isSelected
-                          ? "bg-brand-dark text-white border-brand-dark"
-                          : "bg-white text-brand-muted border-gray-200 hover:border-gray-300"
-                      )}
-                    >
-                      {tag}
-                    </button>
-                  );
-                })}
+              <h4 className="text-lg font-bold text-brand-dark mb-1">Pick your room stage</h4>
+              <p className="text-xs text-brand-muted mb-4 leading-relaxed">
+                This is your playable floor—two looks, two moods. Tap one to lock your map; furniture and icons will
+                match that art style in the mini-game.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRoomLayoutSelected?.("room1");
+                    setStep(3);
+                  }}
+                  className="flex flex-col gap-1.5 rounded-2xl border border-gray-200 p-2 hover:border-brand-dark hover:bg-gray-50/80 transition-colors text-left"
+                >
+                  <img
+                    src={roomPick1}
+                    alt="Stage 1 floor plan"
+                    className="w-full aspect-square object-cover rounded-xl bg-gray-100"
+                  />
+                  <span className="text-xs font-semibold text-brand-dark text-center">Stage 1</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onRoomLayoutSelected?.("room2");
+                    setStep(3);
+                  }}
+                  className="flex flex-col gap-1.5 rounded-2xl border border-gray-200 p-2 hover:border-brand-dark hover:bg-gray-50/80 transition-colors text-left"
+                >
+                  <img
+                    src={roomPick2}
+                    alt="Stage 2 floor plan"
+                    className="w-full aspect-square object-cover rounded-xl bg-gray-100"
+                  />
+                  <span className="text-xs font-semibold text-brand-dark text-center">Stage 2</span>
+                </button>
               </div>
-
-              <input
-                type="text"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Add a quick note (optional)"
-                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm mb-4 focus:outline-none focus:ring-1 focus:ring-brand-dark focus:bg-white transition-all"
-              />
-
-              <button
-                type="button"
-                onClick={() => {
-                  setStep(4);
-                  window.setTimeout(() => setIsVisible(false), 2500);
-                }}
-                className="w-full bg-brand-dark hover:bg-black text-white py-2.5 rounded-full text-sm font-medium transition-colors"
-              >
-                Submit feedback
-              </button>
             </motion.div>
           )}
 
@@ -517,11 +478,13 @@ const EarlyFeedbackWidget = () => {
               animate={{ opacity: 1, scale: 1 }}
               className="flex flex-col items-center justify-center py-6 text-center"
             >
-              <div className="h-12 w-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-3">
+              <div className="h-12 w-12 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mb-3">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
-              <h4 className="text-lg font-bold text-brand-dark mb-1">Thanks for sharing!</h4>
-              <p className="text-sm text-brand-muted">Enjoy your stay.</p>
+              <h4 className="text-lg font-bold text-brand-dark mb-1">Stage unlocked!</h4>
+              <p className="text-sm text-brand-muted leading-relaxed">
+                Your room map is live. Drop in after you check out to decorate your room!
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -536,12 +499,14 @@ export function MyTripsHomePage({
   onOpenReviewing,
   onOpenProfile,
   hasRoomSticker,
+  onRoomLayoutSelected,
 }: {
   currentUser: CurrentUser;
   onOpenGuestReviews: () => void;
   onOpenReviewing: () => void;
   onOpenProfile: () => void;
   hasRoomSticker: boolean;
+  onRoomLayoutSelected?: (layout: RoomLayoutVariant) => void;
 }) {
   const [activeTab, setActiveTab] = useState<TabType>("booked");
 
@@ -639,7 +604,9 @@ export function MyTripsHomePage({
         </div>
       </main>
 
-      {activeTab === "booked" && hasCurrentStay && <EarlyFeedbackWidget />}
+      {activeTab === "booked" && hasCurrentStay && (
+        <EarlyFeedbackWidget onRoomLayoutSelected={onRoomLayoutSelected} />
+      )}
     </div>
   );
 }

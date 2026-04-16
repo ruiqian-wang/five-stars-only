@@ -1,5 +1,5 @@
 import type { RoomItem } from "@/lib/roomGenerationTypes";
-import type { StayReviewCandidate } from "@/lib/hotelReviewApi";
+import type { StayReviewCandidate, StayReviewInteractionType } from "@/lib/hotelReviewApi";
 
 /**
  * Preferred backend facets (amenity:facet) per furniture type, in order.
@@ -40,10 +40,29 @@ export type AssignedStayQuestion = {
   amenity_id: string;
   facet: string;
   state: string;
+  interaction_type: StayReviewInteractionType;
+  comment_placeholder?: string;
+  options?: { label: string; value: string }[];
 };
 
 function facetKeyOf(c: StayReviewCandidate): string {
   return `${c.amenity_id}:${c.facet}`;
+}
+
+function resolveInteractionType(c: StayReviewCandidate): StayReviewInteractionType {
+  if (
+    c.interaction_type === "likert_5" ||
+    c.interaction_type === "single_choice" ||
+    c.interaction_type === "multi_select" ||
+    c.interaction_type === "nps_10"
+  ) {
+    return c.interaction_type;
+  }
+  const n = c.options?.length ?? 0;
+  if (n === 2) return "single_choice";
+  if (n >= 6) return "multi_select";
+  if (n >= 3) return "single_choice";
+  return "likert_5";
 }
 
 /**
@@ -82,6 +101,9 @@ export function assignCandidatesToRoomItems(
         amenity_id: chosen.amenity_id,
         facet: chosen.facet,
         state: chosen.state,
+        interaction_type: resolveInteractionType(chosen),
+        comment_placeholder: chosen.comment_placeholder,
+        options: chosen.options,
       });
     }
   }

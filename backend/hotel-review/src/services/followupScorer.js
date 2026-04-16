@@ -7,6 +7,22 @@ function facetKey(amenityId, facet) {
   return `${amenityId}:${facet}`;
 }
 
+/** Normalize keys so LLM output still matches DB candidates (spacing / case). */
+function canonicalFacetKeyFromString(raw) {
+  const s = String(raw ?? "").trim().replace(/[\u200B-\u200D\uFEFF]/g, "");
+  if (!s) return "";
+  const idx = s.indexOf(":");
+  if (idx === -1) return s.replace(/\s+/g, "").toUpperCase();
+  const left = s.slice(0, idx).trim().replace(/\s+/g, "");
+  const right = s.slice(idx + 1).trim().replace(/\s+/g, "");
+  if (!left || !right) return "";
+  return `${left.toUpperCase()}:${right.toLowerCase()}`;
+}
+
+function canonicalFacetKey(amenityId, facet) {
+  return canonicalFacetKeyFromString(`${amenityId}:${facet}`);
+}
+
 function normalizeAskedFacets(askedFacets = []) {
   const normalized = new Set();
   for (const item of askedFacets || []) {
@@ -30,7 +46,7 @@ function normalizeAskedFacets(askedFacets = []) {
       facet = item.facet;
     }
 
-    if (amenityId && facet) normalized.add(facetKey(amenityId, facet));
+    if (amenityId && facet) normalized.add(canonicalFacetKey(amenityId, facet));
   }
   return normalized;
 }
@@ -111,7 +127,7 @@ export function topCandidates(db, propertyId, { draftText = "", askedFacets = []
 
   const ranked = [];
   for (const snapshot of snapshots) {
-    if (asked.has(facetKey(snapshot.amenity_id, snapshot.facet))) continue;
+    if (asked.has(canonicalFacetKey(snapshot.amenity_id, snapshot.facet))) continue;
     if (snapshot.state === "SATURATED" && Number(snapshot.conflict_score) < 0.2) continue;
 
     const candidate = scoreSnapshot(snapshot);
@@ -138,13 +154,63 @@ export function topCandidates(db, propertyId, { draftText = "", askedFacets = []
   return ranked.slice(0, limit);
 }
 
+/**
+ * Heuristic: taxonomy almost always ships 2–6 `options`. True multiple-choice is
+ * usually 3+ categories (parking tier, odor type, yes/no/not sure). Binary pairs
+ * are better as 1–5 satisfaction on the UI; answers still stored as star 1–5.
+ */
+function inferInteractionType(candidate) {
+  const optCount = candidate.options?.length ?? 0;
+  if (optCount < 2) return "likert_5";
+  if (optCount === 2) return "single_choice";
+  if (optCount >= 6) return "multi_select";
+  return "single_choice";
+}
+
+function resolveInteractionType(candidate, aiMeta) {
+  const optCount = candidate.options?.length ?? 0;
+  const fromAi = aiMeta?.interactionType;
+  if (fromAi === "nps_10") return "nps_10";
+  if (fromAi === "multi_select" && optCount >= 3) return "multi_select";
+  if (fromAi === "single_choice" && optCount >= 2) return "single_choice";
+  if (fromAi === "likert_5") return "likert_5";
+  if (optCount === 2) return "single_choice";
+  return inferInteractionType(candidate);
+}
+
+function defaultCommentPlaceholder() {
+  return "Optional: add a brief note other guests would find helpful.";
+}
+
+function resolveCommentPlaceholder(finalQuestionText, aiMeta) {
+  const raw = typeof aiMeta?.commentPlaceholder === "string" ? String(aiMeta.commentPlaceholder).trim() : "";
+  if (raw.length >= 10 && raw.length <= 260) return raw.slice(0, 260);
+  return defaultCommentPlaceholder();
+}
+
+function decorateStayReviewFields(candidate, aiMeta) {
+  const personalized =
+    typeof aiMeta?.personalizedQuestion === "string" ? String(aiMeta.personalizedQuestion).trim() : "";
+  const finalQuestion = personalized || candidate.question_text;
+  const interaction_type = resolveInteractionType({ ...candidate, question_text: finalQuestion }, aiMeta);
+  const comment_placeholder = resolveCommentPlaceholder(finalQuestion, aiMeta);
+  return {
+    ...candidate,
+    question_text: finalQuestion,
+    interaction_type,
+    comment_placeholder,
+    ...(aiMeta ? { ai: aiMeta } : {}),
+  };
+}
+
 export async function topCandidatesWithOptionalAi(
   db,
   propertyId,
   { draftText = "", askedFacets = [], guestProfile = {}, limit = 5, useAi = true } = {},
 ) {
   const baseCandidates = topCandidates(db, propertyId, { draftText, askedFacets, guestProfile, limit: Math.max(limit, 8) });
-  if (!useAi || !baseCandidates.length) return baseCandidates.slice(0, limit);
+  if (!baseCandidates.length) return [];
+  if (!useAi) return baseCandidates.slice(0, limit).map((c) => decorateStayReviewFields(c, null));
 
   try {
     const property = getPropertyContext(db, propertyId);
@@ -156,21 +222,40 @@ export async function topCandidatesWithOptionalAi(
       limit,
     });
 
-    if (!ai?.selections?.length) return baseCandidates.slice(0, limit);
-    const pickedKeys = new Map(ai.selections.map((item, index) => [item.facetKey, { ...item, rank: index }]));
-    const reranked = baseCandidates
-      .filter((candidate) => pickedKeys.has(facetKey(candidate.amenity_id, candidate.facet)))
-      .map((candidate) => ({
-        ...candidate,
-        ai: pickedKeys.get(facetKey(candidate.amenity_id, candidate.facet)),
-      }))
-      .sort((a, b) => a.ai.rank - b.ai.rank);
+    if (!ai?.selections?.length) return baseCandidates.slice(0, limit).map((c) => decorateStayReviewFields(c, null));
 
-    if (!reranked.length) return baseCandidates.slice(0, limit);
-    return reranked.slice(0, limit);
+    const selectionOrder = ai.selections.map((item, index) => ({
+      key: canonicalFacetKeyFromString(item.facetKey),
+      meta: { ...item, rank: index },
+    }));
+
+    const metaByKey = new Map();
+    for (const { key, meta } of selectionOrder) {
+      if (key && !metaByKey.has(key)) metaByKey.set(key, meta);
+    }
+
+    const baseByKey = new Map(baseCandidates.map((c) => [canonicalFacetKey(c.amenity_id, c.facet), c]));
+
+    const seenKeys = new Set();
+    const reranked = [];
+    for (const { key, meta } of selectionOrder) {
+      if (!key || seenKeys.has(key)) continue;
+      const candidate = baseByKey.get(key);
+      if (!candidate) continue;
+      seenKeys.add(key);
+      reranked.push(decorateStayReviewFields(candidate, meta));
+    }
+
+    if (reranked.length) return reranked.slice(0, limit);
+
+    const fallback = baseCandidates.slice(0, limit).map((c) => {
+      const k = canonicalFacetKey(c.amenity_id, c.facet);
+      return decorateStayReviewFields(c, metaByKey.get(k));
+    });
+    return fallback;
   } catch (error) {
     return baseCandidates.slice(0, limit).map((candidate) => ({
-      ...candidate,
+      ...decorateStayReviewFields(candidate, null),
       ai_error: error.message,
     }));
   }

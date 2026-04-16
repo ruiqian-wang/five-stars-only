@@ -9,3 +9,7 @@ coverage/
 
 # Local hotel-review CSV imports (often large / proprietary; keep in repo folder if you want)
 data/hotel-import/*.csv
+
+# SQLite transient files (do not commit)
+*.sqlite-shm
+*.sqlite-wal

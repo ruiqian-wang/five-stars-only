@@ -61,6 +61,7 @@ export function ExpediaAppNav({
             <button
               type="button"
               onClick={onOpenProfile}
+              data-room-sticker-avatar-target="true"
               className={cn(
                 "relative flex items-center cursor-pointer rounded-full p-1 pr-2 hover:bg-white/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-dark/25",
                 hasRoomSticker && "ring-2 ring-brand-dark/30 ring-offset-2 ring-offset-brand-bg"
