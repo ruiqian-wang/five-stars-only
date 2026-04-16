@@ -1,0 +1,11 @@
+node_modules/
+build/
+dist/
+coverage/
+.DS_Store
+*.log
+.env*
+!.env.example
+
+# Local hotel-review CSV imports (often large / proprietary; keep in repo folder if you want)
+data/hotel-import/*.csv

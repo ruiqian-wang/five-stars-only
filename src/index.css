@@ -1,0 +1,96 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    --font-heading: var(--font-sans);
+    --font-sans: 'Inter', sans-serif;
+
+    /* Expedia-style portal (My Trips) */
+    --color-brand-bg: #f6f5f2;
+    --color-brand-dark: #1a1a1a;
+    --color-brand-muted: #666666;
+    
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) * 0.8);
+    --radius-sm: calc(var(--radius) * 0.6);
+
+    --shadow-soft: 0 10px 30px -5px rgba(0, 0, 0, 0.04), 0 4px 12px -4px rgba(0, 0, 0, 0.03);
+    --shadow-isometric: 20px 20px 60px #d9d9d9, -20px -20px 60px #ffffff;
+}
+
+:root {
+    --background: #F8F7F4;
+    --foreground: #2D2D2D;
+    --card: #FFFFFF;
+    --card-foreground: #2D2D2D;
+    --popover: #FFFFFF;
+    --popover-foreground: #2D2D2D;
+    --primary: #1A1A1A;
+    --primary-foreground: #F8F7F4;
+    --secondary: #F1F0EB;
+    --secondary-foreground: #1A1A1A;
+    --muted: #F1F0EB;
+    --muted-foreground: #71717A;
+    --accent: #F1F0EB;
+    --accent-foreground: #1A1A1A;
+    --destructive: #EF4444;
+    --destructive-foreground: #F8F7F4;
+    --border: #E5E5E1;
+    --input: #E5E5E1;
+    --ring: #1A1A1A;
+    --radius: 1.25rem;
+}
+
+@layer utilities {
+  .isometric-card {
+    transform: perspective(1000px) rotateX(10deg) rotateY(-10deg) rotateZ(5deg);
+    transition: transform 0.3s ease;
+  }
+  
+  .isometric-card:hover {
+    transform: perspective(1000px) rotateX(5deg) rotateY(-5deg) rotateZ(2deg) translateY(-5px);
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .soft-inner-shadow {
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05), inset -2px -2px 5px rgba(255,255,255,0.8);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground font-sans;
+  }
+}
